@@ -1,5 +1,5 @@
 {
-    "name": "zendframework/zend-test",
+    "name": "icron/zend-test",
     "description": "Tools to facilitate unit testing of zend-mvc applications",
     "license": "BSD-3-Clause",
     "keywords": [
