@@ -15,6 +15,9 @@
         "slack": "https://zendframework-slack.herokuapp.com",
         "forum": "https://discourse.zendframework.com/c/questions/components"
     },
+    "replace": {
+        "zendframework/zend-test": "*"
+    },
     "require": {
         "php": "^5.6 || ^7.0",
         "phpunit/phpunit": "^4.0 || ^5.0 || ^6.0 || ^7.0 || ^8.0",
