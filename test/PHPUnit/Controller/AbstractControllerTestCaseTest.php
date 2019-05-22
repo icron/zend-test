@@ -8,6 +8,7 @@
  */
 namespace ZendTest\Test\PHPUnit\Controller;
 
+use Generator;
 use org\bovigo\vfs\vfsStream;
 use org\bovigo\vfs\vfsStreamWrapper;
 use PHPUnit\Framework\ExpectationFailedException;
@@ -49,7 +50,7 @@ class AbstractControllerTestCaseTest extends AbstractHttpControllerTestCase
         return rmdir($dir);
     }
 
-    protected function setUp()
+    protected function setUpCompat()
     {
         $this->traceErrorCache = $this->traceError;
         $this->tearDownCacheDir();
@@ -57,14 +58,14 @@ class AbstractControllerTestCaseTest extends AbstractHttpControllerTestCase
         $this->setApplicationConfig(
             include __DIR__ . '/../../_files/application.config.php'
         );
-        parent::setUp();
+        parent::setUpCompat();
     }
 
-    protected function tearDown()
+    protected function tearDownCompat()
     {
         $this->traceError = $this->traceErrorCache;
         $this->tearDownCacheDir();
-        parent::tearDown();
+        parent::tearDownCompat();
     }
 
     public function testModuleCacheIsDisabled()
@@ -106,13 +107,13 @@ class AbstractControllerTestCaseTest extends AbstractHttpControllerTestCase
         $this->assertTrue(Console::isConsole(), '3. Console::isConsole returned false after tearDown');
 
         Console::overrideIsConsole(false);
-        parent::setUp();
+        parent::setUpCompat();
 
         $this->assertFalse(Console::isConsole(), '4. Console::isConsole returned true after parent::setUp');
         $this->getApplication();
         $this->assertFalse(Console::isConsole(), '5. Console::isConsole returned true after retrieving application');
 
-        parent::tearDown();
+        parent::tearDownCompat();
 
         $this->assertFalse(Console::isConsole(), '6. Console.isConsole returned true after parent::tearDown');
     }
@@ -168,9 +169,9 @@ class AbstractControllerTestCaseTest extends AbstractHttpControllerTestCase
 
         $this->assertTrue($caught, 'Did not catch expected exception!');
 
-        $this->assertContains('actual module name is "baz"', $message);
-        $this->assertContains("Exception 'RuntimeException' with message 'Expected exception message'", $message);
-        $this->assertContains(__FILE__, $message);
+        $this->assertContainsCompat('actual module name is "baz"', $message);
+        $this->assertContainsCompat("Exception 'RuntimeException' with message 'Expected exception message'", $message);
+        $this->assertContainsCompat(__FILE__, $message);
     }
 
     public function testAssertExceptionDetailsNotPresentWhenTraceErrorIsDisabled()
@@ -192,9 +193,9 @@ class AbstractControllerTestCaseTest extends AbstractHttpControllerTestCase
 
         $this->assertTrue($caught, 'Did not catch expected exception!');
 
-        $this->assertContains('actual module name is "baz"', $message);
-        $this->assertNotContains("Exception 'RuntimeException' with message 'Expected exception message'", $message);
-        $this->assertNotContains(__FILE__, $message);
+        $this->assertContainsCompat('actual module name is "baz"', $message);
+        $this->assertNotContainsCompat("Exception 'RuntimeException' with message 'Expected exception message'", $message);
+        $this->assertNotContainsCompat(__FILE__, $message);
     }
 
     public function testAssertNotModuleName()
@@ -486,5 +487,70 @@ class AbstractControllerTestCaseTest extends AbstractHttpControllerTestCase
         $this->reset();
 
         $this->assertFalse(array_key_exists('_SESSION', $GLOBALS));
+    }
+
+    public function method()
+    {
+        yield 'null' => [null];
+        yield 'get' => ['GET'];
+        yield 'delete' => ['DELETE'];
+        yield 'post' => ['POST'];
+        yield 'put' => ['PUT'];
+        yield 'patch' => ['PATCH'];
+    }
+
+    /**
+     * @dataProvider method
+     *
+     * @param null|string $method
+     */
+    public function testDispatchWithNullParams($method)
+    {
+        $this->dispatch('/custom-response', $method, null);
+        $this->assertResponseStatusCode(999);
+    }
+
+    public function testQueryParamsDelete()
+    {
+        $this->dispatch('/tests', 'DELETE', ['foo' => 'bar']);
+        $this->assertEquals('foo=bar', $this->getRequest()->getQuery()->toString());
+    }
+
+    /**
+     * @return Generator
+     */
+    public function routeParam()
+    {
+        yield 'phpunit' => ['phpunit'];
+        yield 'param' => ['param'];
+    }
+
+    /**
+     * @dataProvider routeParam
+     *
+     * @param string $param
+     */
+    public function testRequestWithRouteParam($param)
+    {
+        $this->dispatch(sprintf('/with-param/%s', $param));
+        $this->assertResponseStatusCode(200);
+    }
+
+    private function assertContainsCompat($needle, $haystack)
+    {
+        if (method_exists($this, 'assertStringContainsString')) {
+            $this->assertStringContainsString($needle, $haystack);
+        } else {
+            $this->assertContains($needle, $haystack);
+        }
+    }
+
+    private function assertNotContainsCompat($needle, $haystack)
+    {
+        if (method_exists($this, 'assertStringNotContainsString')) {
+            $this->assertStringNotContainsString($needle, $haystack);
+        } else {
+            $this->assertNotContains($needle, $haystack);
+        }
     }
 }
